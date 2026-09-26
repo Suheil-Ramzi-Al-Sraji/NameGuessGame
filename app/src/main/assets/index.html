@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>لعبة اكتشاف الاسم</title>
+<style>
+:root{
+ --bg1:#07111f;--bg2:#172554;--panel:#0f172a;--card:#172033;--text:#fff;
+ --muted:#cbd5e1;--line:#475569;--accent:#38bdf8;--scale:1
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;min-height:100%;font-family:Tahoma,Arial,sans-serif}
+body{
+ color:var(--text);background:linear-gradient(135deg,var(--bg1),var(--bg2));
+ transition:.3s;overflow-x:hidden
+}
+body.day{--panel:#fff;--card:#eff6ff;--text:#0f172a;--muted:#475569;--line:#94a3b8;--accent:#0284c7}
+#app{width:min(980px,100%);margin:auto;padding:clamp(10px,2vw,20px)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:clamp(10px,2vw,18px);box-shadow:0 15px 45px #0005}
+h1{text-align:center;margin:3px 0;font-size:clamp(24px,5vw,38px)}
+.sub{text-align:center;color:var(--muted);line-height:1.7;margin-bottom:12px}
+.topbar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+button,input,select{font:inherit}
+button{min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text);font-weight:800;cursor:pointer}
+button:hover{border-color:var(--accent)}
+.primary{background:var(--accent);color:#00111b}.good{background:#22c55e;color:#03210d}.bad{background:#ef4444;color:#fff}
+.question{text-align:center;font-size:clamp(17px,3vw,22px);font-weight:900;margin:14px 0 10px}
+.muted{color:var(--muted);line-height:1.7}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:17px;padding:12px;margin-top:10px}
+.choices{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px}
+.buttons{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.progress{height:7px;background:var(--panel);border-radius:50px;overflow:hidden;margin:8px 0}
+.progress div{height:100%;background:var(--accent);transition:.3s}
+
+/* الجداول: تتكيف مع العرض، وتبقى كل الأعمدة ظاهرة */
+.tablebox{width:100%;overflow:hidden;display:flex;justify-content:center}
+.game-table{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:clamp(2px,.6vw,5px)}
+.game-table th,.game-table td{
+ width:20%;height:clamp(39px,8vw,62px);padding:1px;
+ text-align:center;vertical-align:middle;border:1px solid var(--line);
+ border-radius:9px;background:var(--panel);font-size:clamp(15px,3.8vw,26px);
+ font-weight:900;overflow:hidden;white-space:pre-wrap;word-break:break-word
+}
+.game-table th{font-size:clamp(11px,2vw,15px);color:var(--accent)}
+.space-cell{font-size:clamp(12px,2.2vw,16px)!important;color:var(--muted);white-space:nowrap!important}
+.table-title{text-align:center;font-weight:900;font-size:18px;margin:4px}
+
+/* نافذة الإعدادات */
+#settingsPanel{position:fixed;inset:0;background:#0008;z-index:50;display:none;padding:12px;overflow:auto}
+.settings-box{width:min(520px,100%);margin:20px auto;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:16px}
+.setting-row{margin:12px 0}.setting-row label{display:block;font-weight:800;margin-bottom:6px}
+input,select{width:100%;min-height:45px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--text);padding:8px}
+.color-list{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.swatch{height:42px;border-radius:9px;border:2px solid #fff5;cursor:pointer}
+#customColor{width:100%;height:50px;padding:2px;cursor:pointer}
+#imageInput{display:none}
+
+/* نتيجة */
+.result{text-align:center;font-size:clamp(35px,10vw,68px);font-weight:1000;padding:20px;border-radius:18px;background:#172554;border:2px solid var(--accent);margin:14px 0;animation:pop .6s}
+.cup{text-align:center;font-size:65px;animation:bob .8s infinite alternate}
+.score{text-align:center;color:#facc15;font-weight:900;font-size:19px}
+#fireworks{position:fixed;inset:0;pointer-events:none;z-index:80;overflow:hidden}
+.spark{position:absolute;width:7px;height:7px;border-radius:50%;animation:boom 1.5s forwards}
+@keyframes boom{to{transform:translate(var(--x),var(--y));opacity:0}}
+@keyframes pop{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes bob{to{transform:translateY(-8px) rotate(5deg)}}
+.hidden{display:none!important}
+.footer{text-align:center;color:var(--muted);font-size:12px;margin:10px}
+
+/* الشاشات الضيقة جداً: نقلل كل شيء تلقائياً */
+@media(max-width:420px){
+ #app{padding:7px}.card{border-radius:15px;padding:8px}
+ .choices{gap:5px}.game-table{border-spacing:2px}
+ .game-table th,.game-table td{height:34px;font-size:14px;border-radius:6px}
+ .game-table th{font-size:10px}
+}
+@media(orientation:landscape) and (max-height:600px){
+ #app{max-width:1100px;padding:7px}.game-table th,.game-table td{height:35px}
+}
+</style>
+</head>
+<body>
+<div id="fireworks"></div>
+<div id="app">
+<div class="card">
+<h1>🎮 لعبة اكتشاف الاسم</h1>
+<div class="sub">اختر اللعبة، ثم اختر الأعمدة. لا تكتب الاسم أثناء التخمين.</div>
+<div class="topbar">
+<button id="settingsBtn">⚙️ الإعدادات</button>
+<button id="rotateBtn">🔄 قلب الشاشة</button>
+</div>
+<div id="screen"></div>
+<div class="footer">التصميم يتكيف تلقائياً مع حجم شاشة الهاتف.</div>
+</div>
+</div>
+
+<div id="settingsPanel">
+<div class="settings-box">
+<h2 style="text-align:center">⚙️ الإعدادات</h2>
+<div class="setting-row">
+<label>اللغة / Language</label>
+<select id="lang">
+<option value="ar">العربية</option><option value="en">English</option>
+</select>
+</div>
+<div class="setting-row">
+<label>الوضع</label>
+<button id="modeBtn" style="width:100%">🌙 الوضع الليلي / ☀️ النهاري</button>
+</div>
+<div class="setting-row">
+<label>الإضاءة</label>
+<input id="brightness" type="range" min="45" max="120" value="100">
+</div>
+<div class="setting-row">
+<label>ألوان الخلفية الجاهزة</label>
+<div class="color-list" id="colors"></div>
+</div>
+<div class="setting-row">
+<label>🎨 اختر لونك بنفسك</label>
+<input id="customColor" type="color" value="#172554">
+</div>
+<div class="setting-row">
+<label>🖼️ صورة من الاستوديو كخلفية</label>
+<input id="imageInput" type="file" accept="image/*">
+<button id="imageBtn" style="width:100%">اختيار صورة</button>
+</div>
+<div class="setting-row">
+<button id="clearBg" style="width:100%">إزالة صورة الخلفية</button>
+</div>
+<button id="closeSettings" class="primary" style="width:100%">تم</button>
+</div>
+</div>
+
+<script>
+"use strict";
+const AR=["أ","ب","ت","ث","ج","ح","خ","د","ذ","ر","ز","س","ش","ص","ض","ط","ظ","ع","غ","ف","ق","ك","ل","م","ن","هـ","و","ي"];
+const AR_EXTRA=[" ","ؤ","ء","ى","ا","ة","ّ"];
+const EN="ABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""), ENLOW="abcdefghijklmnopqrstuvwxyz".split("");
+const TYPES={
+ ar:{base:AR,extra:AR_EXTRA},en:{base:EN,extra:[" ","-"]},
+ an:{base:["٠","١","٢","٣","٤","٥","٦","٧","٨","٩"],extra:[" ","-"]},
+ ennum:{base:"0123456789".split(""),extra:[" ","-"]}
+};
+let G=null,night=true,colors=[
+["#07111f","#172554"],["#052e16","#164e63"],["#3b0764","#172554"],
+["#431407","#1e293b"],["#0f172a","#3f3f46"],["#172554","#0c4a6e"],
+["#3f0d12","#7f1d1d"],["#082f49","#155e75"],["#1f2937","#581c87"],["#312e81","#164e63"]
+];
+const screen=document.getElementById("screen");
+
+function save(k,v){localStorage.setItem(k,v)}
+function load(k,d){return localStorage.getItem(k)??d}
+
+function menu(){
+screen.innerHTML=`<div class="question">اختر ماذا تريد أن تلعب</div>
+<div class="buttons">
+<button class="primary" data-t="ar">🇸🇦 الحروف العربية</button>
+<button data-t="en">🔤 English Letters</button>
+<button data-t="an">🔢 الأرقام العربية</button>
+<button data-t="ennum">🔢 English Numbers</button></div>`;
+screen.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>start(b.dataset.t));
+}
+function start(type){G={type,length:0,current:0,rows:[],answer:[],caseMode:"upper"};settingsGame()}
+function settingsGame(){
+let n="";for(let i=1;i<=9;i++)n+=`<button data-n="${i}">${i}</button>`;
+screen.innerHTML=`<div class="question">اختر حجم الكلمة من 1 إلى 9</div>
+<div class="choices">${n}</div>
+<div class="question">أو استخدم عددًا أكبر</div>
+<button id="more" style="width:100%">✍️ عدد غير محدد</button>
+<div id="moreBox" class="panel hidden"><input id="customN" type="number" min="10" max="100" placeholder="مثلاً 12">
+<button id="done" class="primary" style="width:100%;margin-top:7px">انتهيت</button></div>
+${G.type==="en"?`<div class="panel"><div class="question">نمط الحروف الإنجليزية</div>
+<select id="case"><option value="upper">كلها Capital</option><option value="lower">كلها Small</option><option value="mixed">أول حرفين وآخر حرفين Capital</option><option value="custom">أنا أحدد Capital</option></select>
+<input id="caps" class="hidden" style="margin-top:7px" placeholder="مثال: 1,2,7,8"></div>`:""}`;
+screen.querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>finishGame(+b.dataset.n));
+document.getElementById("more").onclick=()=>document.getElementById("moreBox").classList.remove("hidden");
+document.getElementById("done").onclick=()=>{let x=+document.getElementById("customN").value;if(x>=10&&x<=100)finishGame(x);else alert("اكتب عددًا من 10 إلى 100.")};
+if(G.type==="en")document.getElementById("case").onchange=e=>document.getElementById("caps").classList.toggle("hidden",e.target.value!=="custom");
+}
+function finishGame(n){
+G.length=n;
+if(G.type==="en"){G.caseMode=document.getElementById("case").value;G.caps=(document.getElementById("caps")?.value||"").split(",").map(Number).filter(Boolean)}
+showOriginal();
+}
+function items(){
+let t=TYPES[G.type],b=[...t.base];
+if(G.type==="en"){
+if(G.caseMode==="lower")b=[...ENLOW];
+if(G.caseMode==="mixed"){b=[...ENLOW];for(let i=0;i<2;i++)b[i]=b[i].toUpperCase();for(let i=b.length-2;i<b.length;i++)b[i]=b[i].toUpperCase()}
+if(G.caseMode==="custom"){b=[...ENLOW];G.caps.forEach(i=>{if(b[i-1])b[i-1]=b[i-1].toUpperCase()})}
+}
+return [...b,...t.extra]
+}
+function matrix(){
+let t=TYPES[G.type],arr=items(),first=arr.slice(0,t.base.length),extra=arr.slice(t.base.length);
+let rows=Math.ceil(first.length/4),m=Array.from({length:Math.max(rows,extra.length)},()=>Array(5).fill(""));
+first.forEach((x,i)=>m[Math.floor(i/4)][i%4]=x);extra.forEach((x,i)=>m[i][4]=x);return m
+}
+function cell(x){
+if(x===" ")return `<td class="space-cell">مسافة</td>`;
+return `<td>${x||"·"}</td>`
+}
+function table(m){
+return `<div class="tablebox"><table class="game-table"><thead><tr>${m[0].map((_,i)=>`<th>عمود ${i+1}</th>`).join("")}</tr></thead><tbody>${m.map(r=>`<tr>${r.map(cell).join("")}</tr>`).join("")}</tbody></table></div>`
+}
+function ord(n){return["الأول","الثاني","الثالث","الرابع","الخامس","السادس","السابع","الثامن","التاسع"][n-1]||"رقم "+n}
+function showOriginal(){
+screen.innerHTML=`<div class="question">اختر العمود الذي يوجد فيه الحرف ${ord(G.current+1)}</div>
+<div class="muted" style="text-align:center">المرحلة الأولى: ${G.current+1} من ${G.length}</div>
+<div class="progress"><div style="width:${G.current/G.length*100}%"></div></div>
+<div class="panel"><div class="muted">الجدول كاملًا — العمود الخامس للمسافة والرموز الإضافية.</div>${table(matrix())}</div>
+<div class="choices">${[1,2,3,4,5].map(i=>`<button data-c="${i}">العمود ${i}</button>`).join("")}</div>`;
+screen.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>choose(+b.dataset.c))
+}
+function choose(c){
+let m=matrix(),col=[];for(let r=0;r<m.length;r++)if(m[r][c-1]!=="")col.push(m[r][c-1]);G.rows.push(col);G.current++;
+G.current<G.length?showOriginal():second()
+}
+function second(){
+let max=Math.max(...G.rows.map(r=>r.length)),m=G.rows.map(r=>{let x=[...r];while(x.length<max)x.push("");return x});
+screen.innerHTML=`<div class="question">🔄 الجدول الثاني — كامل</div>
+<div class="muted" style="text-align:center">سيبقى الجدول الثاني ظاهرًا كاملًا حتى أثناء اختيار كل حرف.</div>
+<div class="panel">${table(m)}</div><div id="pick"></div>`;
+G.current=0;askSecond(m)
+}
+function askSecond(m){
+let row=G.rows[G.current];
+document.getElementById("pick").innerHTML=`<div class="question">الحرف ${ord(G.current+1)}: اختر العمود</div>
+<div class="choices">${row.map((x,i)=>x!==""?`<button data-r="${i+1}">العمود ${i+1}</button>`:"").join("")}</div>`;
+document.querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>reveal(+b.dataset.r,m))
+}
+function reveal(c,m){
+let v=G.rows[G.current][c-1];if(!v)return;
+G.answer.push(v);G.current++;
+if(G.current<G.length)askSecond(m);else result()
+}
+function result(){
+let ans=G.answer.join(""),score=+load("score",0);
+screen.innerHTML=`<div class="question">🎉 تم اكتشاف الاسم!</div><div class="cup">🏆</div><div class="result">${ans}</div>
+<div class="question">هل كانت النتيجة صحيحة؟</div><div class="buttons"><button class="good" id="yes">✅ صحيح +10</button><button class="bad" id="no">❌ خطأ</button></div>
+<div id="feedback"></div><div class="score" id="score">⭐ النقاط: ${score}</div><button id="again" style="width:100%;margin-top:10px">🔄 لعبة جديدة</button>`;
+fire();
+document.getElementById("yes").onclick=()=>{let s=+load("score",0)+10;save("score",s);document.getElementById("score").textContent="⭐ النقاط: "+s;document.getElementById("feedback").innerHTML='<div class="panel" style="text-align:center">🎊 رائع! أضيفت 10 نقاط.</div>';fire()};
+document.getElementById("no").onclick=()=>document.getElementById("feedback").innerHTML='<div class="panel" style="text-align:center">آسف 😅 ربما كان الخلل من اللعبة أو لم يتم اختيار العمود الصحيح.</div>';
+document.getElementById("again").onclick=menu;
+}
+function fire(){
+let f=document.getElementById("fireworks");
+for(let i=0;i<80;i++){let s=document.createElement("i");s.className="spark";s.style.left=(20+Math.random()*60)+"%";s.style.top=(20+Math.random()*45)+"%";s.style.background=`hsl(${Math.random()*360} 90% 60%)`;s.style.setProperty("--x",(Math.random()*450-225)+"px");s.style.setProperty("--y",(Math.random()*450-225)+"px");f.appendChild(s);setTimeout(()=>s.remove(),1600)}
+}
+
+/* إعدادات */
+function openSettings(){document.getElementById("settingsPanel").style.display="block"}
+document.getElementById("settingsBtn").onclick=openSettings;
+document.getElementById("closeSettings").onclick=()=>document.getElementById("settingsPanel").style.display="none";
+document.getElementById("modeBtn").onclick=()=>{
+night=!night;document.body.classList.toggle("day",!night);
+document.getElementById("modeBtn").textContent=night?"🌙 الوضع الليلي / ☀️ النهاري":"☀️ الوضع النهاري / 🌙 الليلي";
+};
+document.getElementById("brightness").oninput=e=>document.getElementById("app").style.filter=`brightness(${e.target.value}%)`;
+const colorBox=document.getElementById("colors");
+colors.forEach(c=>{let b=document.createElement("button");b.className="swatch";b.style.background=`linear-gradient(135deg,${c[0]},${c[1]})`;b.onclick=()=>{document.body.style.background=`linear-gradient(135deg,${c[0]},${c[1]})`};colorBox.appendChild(b)});
+document.getElementById("customColor").oninput=e=>document.body.style.background=e.target.value;
+document.getElementById("imageBtn").onclick=()=>document.getElementById("imageInput").click();
+document.getElementById("imageInput").onchange=e=>{
+let file=e.target.files[0];if(!file)return;let r=new FileReader();r.onload=()=>{document.body.style.background=`linear-gradient(#0004,#0004),url("${r.result}") center/cover fixed no-repeat`};r.readAsDataURL(file)
+};
+document.getElementById("clearBg").onclick=()=>document.body.style.background=night?"linear-gradient(135deg,#07111f,#172554)":"linear-gradient(135deg,#dbeafe,#f8fafc)";
+document.getElementById("lang").onchange=e=>alert(e.target.value==="en"?"English interface will be expanded in the next version.":"تم اختيار العربية.");
+
+document.getElementById("rotateBtn").onclick=async()=>{
+try{
+if(screen.orientation&&screen.orientation.lock){await screen.orientation.lock(screen.orientation.type.startsWith("portrait")?"landscape":"portrait")}
+else alert("تدوير الشاشة يتم من إعدادات الهاتف إذا لم يسمح المتصفح بقفل الاتجاه.");
+}catch(e){alert("يمكنك تفعيل التدوير التلقائي من شريط إعدادات الهاتف.");}
+};
+
+menu();
+</script>
+</body>
+  </html>
